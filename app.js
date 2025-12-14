@@ -297,6 +297,10 @@ function setupDrawing() {
   const canvas = $('draw');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+  // Allow scroll/zoom by default; disable only during an active stroke.
+  const DEFAULT_TOUCH_ACTION = 'pan-x pan-y pinch-zoom';
+  canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
+
   function clear() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -324,24 +328,40 @@ function setupDrawing() {
 
   canvas.addEventListener('pointerdown', (e) => {
     drawing = true;
+
+    // Lock gestures while drawing so finger-drag produces continuous strokes.
+    canvas.style.touchAction = 'none';
+    e.preventDefault();
+
     brush();
     const p = pos(e);
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
+
     canvas.setPointerCapture(e.pointerId);
-  });
+  }, { passive: false });
 
   canvas.addEventListener('pointermove', (e) => {
     if (!drawing) return;
+    e.preventDefault();
+
     const p = pos(e);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
-  });
+  }, { passive: false });
 
-  canvas.addEventListener('pointerup', (e) => {
+  function endStroke(e) {
+    if (!drawing) return;
     drawing = false;
-    canvas.releasePointerCapture(e.pointerId);
-  });
+
+    // Restore scroll/zoom immediately after the stroke ends.
+    canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
+
+    try { canvas.releasePointerCapture(e.pointerId); } catch {}
+  }
+
+  canvas.addEventListener('pointerup', endStroke, { passive: false });
+  canvas.addEventListener('pointercancel', endStroke, { passive: false });
 
   $('clearBtn').addEventListener('click', () => {
     clear();
@@ -356,6 +376,10 @@ function setupDrawing() {
     $('animOut').getContext('2d').clearRect(0, 0, $('animOut').width, $('animOut').height);
     $('animMean').getContext('2d').clearRect(0, 0, $('animMean').width, $('animMean').height);
     $('inputPreview').getContext('2d').clearRect(0, 0, $('inputPreview').width, $('inputPreview').height);
+
+    // Also restore touch-action if user clears mid-stroke
+    drawing = false;
+    canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
   });
 }
 
