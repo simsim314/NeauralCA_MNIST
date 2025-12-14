@@ -297,10 +297,6 @@ function setupDrawing() {
   const canvas = $('draw');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-  // Allow scroll/zoom by default; disable only during an active stroke.
-  const DEFAULT_TOUCH_ACTION = 'pan-x pan-y pinch-zoom';
-  canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
-
   function clear() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -308,6 +304,7 @@ function setupDrawing() {
   clear();
 
   let drawing = false;
+  let activePointerId = null;
 
   function brush() {
     const w = parseInt($('brushSize').value, 10);
@@ -318,50 +315,84 @@ function setupDrawing() {
     ctx.strokeStyle = col;
   }
 
-  function pos(evt) {
+  function posFromClient(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     return {
-      x: (evt.clientX - r.left) * (canvas.width / r.width),
-      y: (evt.clientY - r.top) * (canvas.height / r.height),
+      x: (clientX - r.left) * (canvas.width / r.width),
+      y: (clientY - r.top) * (canvas.height / r.height),
     };
   }
 
-  canvas.addEventListener('pointerdown', (e) => {
+  function startAt(clientX, clientY, pointerId = null) {
     drawing = true;
-
-    // Lock gestures while drawing so finger-drag produces continuous strokes.
-    canvas.style.touchAction = 'none';
-    e.preventDefault();
-
+    activePointerId = pointerId;
     brush();
-    const p = pos(e);
+    const p = posFromClient(clientX, clientY);
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
+  }
 
-    canvas.setPointerCapture(e.pointerId);
+  function moveTo(clientX, clientY) {
+    if (!drawing) return;
+    const p = posFromClient(clientX, clientY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+
+  function endStroke() {
+    drawing = false;
+    activePointerId = null;
+  }
+
+  // Pointer events (desktop + most mobile)
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    startAt(e.clientX, e.clientY, e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
   }, { passive: false });
 
   canvas.addEventListener('pointermove', (e) => {
     if (!drawing) return;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
     e.preventDefault();
-
-    const p = pos(e);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
+    moveTo(e.clientX, e.clientY);
   }, { passive: false });
 
-  function endStroke(e) {
-    if (!drawing) return;
-    drawing = false;
-
-    // Restore scroll/zoom immediately after the stroke ends.
-    canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
-
+  canvas.addEventListener('pointerup', (e) => {
+    e.preventDefault();
+    endStroke();
     try { canvas.releasePointerCapture(e.pointerId); } catch {}
-  }
+  }, { passive: false });
 
-  canvas.addEventListener('pointerup', endStroke, { passive: false });
-  canvas.addEventListener('pointercancel', endStroke, { passive: false });
+  canvas.addEventListener('pointercancel', (e) => {
+    e.preventDefault();
+    endStroke();
+  }, { passive: false });
+
+  // Touch fallback (fixes in-app browsers / weird Android cases)
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length < 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    startAt(t.clientX, t.clientY, 'touch');
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!drawing || e.touches.length < 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    moveTo(t.clientX, t.clientY);
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    endStroke();
+  }, { passive: false });
+
+  canvas.addEventListener('touchcancel', (e) => {
+    e.preventDefault();
+    endStroke();
+  }, { passive: false });
 
   $('clearBtn').addEventListener('click', () => {
     clear();
@@ -377,9 +408,7 @@ function setupDrawing() {
     $('animMean').getContext('2d').clearRect(0, 0, $('animMean').width, $('animMean').height);
     $('inputPreview').getContext('2d').clearRect(0, 0, $('inputPreview').width, $('inputPreview').height);
 
-    // Also restore touch-action if user clears mid-stroke
-    drawing = false;
-    canvas.style.touchAction = DEFAULT_TOUCH_ACTION;
+    endStroke();
   });
 }
 
