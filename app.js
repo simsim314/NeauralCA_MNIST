@@ -422,7 +422,13 @@ async function main() {
   setStatus('Loading model.onnx …');
   session = await ort.InferenceSession.create(MODEL_URL, { executionProviders: ['wasm'] });
 
+  // warm-up: compile/initialize kernels now, not on first Run
+  setStatus('Warming up model …');
+  const warm = new ort.Tensor('float32', new Float32Array(28 * 28), [1, 1, 28, 28]);
+  await session.run({ x: warm });
+  
   setStatus('Ready.');
+
   $('speedVal').textContent = `${$('speed').value}ms`;
 
   $('runBtn').addEventListener('click', async () => {
