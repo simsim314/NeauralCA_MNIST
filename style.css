@@ -96,8 +96,12 @@ canvas {
 
 #draw {
   cursor: crosshair;
-  touch-action: pinch-zoom;   /* blocks 1-finger pan so drawing works; allows pinch */
+  touch-action: none;           /* required for reliable 1-finger drawing on Android */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
+
 
 
 #grid { width: 100%; height: auto; }
