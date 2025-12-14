@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MNIST Dense-CA (50 steps) in the Browser</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- ONNX Runtime Web (WASM) -->
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/ort.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <h1>MNIST Dense-CA (50 steps)</h1>
+
+    <div class="row">
+      <div class="panel">
+        <h2>Draw your digit and press Run</h2>
+        <canvas id="draw" width="500" height="500"></canvas>
+
+        <div class="controls">
+          <button id="clearBtn">Clear</button>
+
+          <label class="inline">
+            Brush
+            <input id="brushSize" type="range" min="4" max="60" step="1" value="28" />
+            <span id="brushVal">28</span>
+          </label>
+
+          <label class="inline">
+            Ink
+            <input id="brushColor" type="color" value="#ffffff" />
+          </label>
+
+          <button id="runBtn">Run</button>
+        </div>
+
+        <div class="mini">
+          <div>
+            <div class="label">Scaled input (28×28)</div>
+            <canvas id="inputPreview" width="140" height="140"></canvas>
+          </div>
+          <div id="inputInfo" class="mono"></div>
+        </div>
+
+        <div class="note">
+          Put the exported ONNX model at <span class="mono">assets/model.onnx</span>
+          and digit means at <span class="mono">assets/means.json</span>.
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Animation + Verdict</h2>
+
+        <div class="topRow">
+          <div>
+            <div class="label">Output (animated)</div>
+            <canvas id="animOut" width="280" height="280"></canvas>
+          </div>
+          <div>
+            <div class="label">Closest mean (updates every 5)</div>
+            <canvas id="animMean" width="280" height="280"></canvas>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="prevBtn">Prev</button>
+          <button id="nextBtn">Next</button>
+          <button id="playBtn">Play</button>
+          <button id="pauseBtn">Pause</button>
+
+          <label class="inline">
+            Speed
+            <input id="speed" type="range" min="10" max="400" step="5" value="80" />
+            <span id="speedVal">80ms</span>
+          </label>
+
+          <span id="frameLabel" class="mono">frame: -</span>
+        </div>
+
+        <div id="verdict" class="verdict"></div>
+
+        <div id="status" class="status mono">Loading…</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>All 50 iterations</h2>
+      <div class="hint">Click any thumbnail to jump to that frame.</div>
+      <canvas id="grid" width="1100" height="48"></canvas>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
