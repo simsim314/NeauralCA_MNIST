@@ -2,6 +2,8 @@
 
 This project runs a **50-step neural cellular-automaton-like process** on a 28×28 image of a handwritten digit. In the end detecting the handwritten digit using purely local (r = 4) information processing of an image. 
 
+Try the live demo here: [https://simsim314.github.io/NeauralCA_MNIST/](https://simsim314.github.io/NeauralCA_MNIST/). When you open it, wait about **30 seconds** for the ONNX model to finish loading in the browser before pressing **Run**. You should see `Ready` in the Animation + Verdict panel. 
+
 ## Core idea
 
 - **State = image**  
