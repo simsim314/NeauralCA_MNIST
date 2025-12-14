@@ -14,7 +14,7 @@ import torch.nn.functional as F
 MNIST_ROOT = "./mnist"
 MEANS_PATH = "out/mnist_train_digit_means.npy"
 
-MODEL_PATH = "out/mnist_dense_concat50_targets_mse_1.pt"
+MODEL_PATH = "out/mnist_dense_concat50_targets_mse.pt"
 NUM_BLOCKS = 50
 HIDDEN = 16
 SHOW_MEAN_EVERY = 5 
