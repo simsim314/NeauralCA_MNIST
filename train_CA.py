@@ -3,6 +3,10 @@
 # Every 5 blocks (5,10,...,50) output is trained to match ideal digit template (MSE).
 # Loss = mean MSE over all target checkpoints + small smoothness penalty between consecutive blocks.
 # Also saves a checkpoint EACH epoch: out/mnist_dense_concat50_targets_mse_eXXX.pt
+#
+# Adds:
+# - MNIST auto-download (train+test)
+# - Auto-generate out/mnist_train_digit_means.npy if missing
 
 import os
 import numpy as np
@@ -35,10 +39,24 @@ PAD = 4
 LAMBDA_SMOOTH = 0.1  # small weight for mean-abs diff between outs[i] and outs[i+1]
 
 
+def ensure_mnist_downloaded(root=MNIST_ROOT):
+    os.makedirs(root, exist_ok=True)
+    try:
+        from torchvision.datasets import MNIST
+    except ImportError as e:
+        raise ImportError(
+            "torchvision is required to download/load MNIST. Install with: pip install torchvision"
+        ) from e
+    MNIST(root=root, train=True, download=True)
+    MNIST(root=root, train=False, download=True)
+
+
 def load_mnist(root=MNIST_ROOT):
+    ensure_mnist_downloaded(root)
     from torchvision.datasets import MNIST
-    tr = MNIST(root=root, train=True, download=True)
-    te = MNIST(root=root, train=False, download=True)
+
+    tr = MNIST(root=root, train=True, download=False)
+    te = MNIST(root=root, train=False, download=False)
 
     xtr = (tr.data.numpy().astype(np.float32) / 255.0)[:, None, :, :]
     ytr = tr.targets.numpy().astype(np.int64)
@@ -48,9 +66,33 @@ def load_mnist(root=MNIST_ROOT):
     return (xtr, ytr), (xte, yte)
 
 
+def compute_and_save_digit_means(mnist_root=MNIST_ROOT, out_path=IDEAL_PATH):
+    ensure_mnist_downloaded(mnist_root)
+    from torchvision.datasets import MNIST
+
+    tr = MNIST(root=mnist_root, train=True, download=False)
+    x = tr.data.numpy().astype(np.float32) / 255.0  # (60000,28,28)
+    y = tr.targets.numpy().astype(np.int64)
+
+    means = np.zeros((10, 28, 28), dtype=np.float32)
+    counts = np.zeros(10, dtype=np.int64)
+
+    for d in range(10):
+        idxs = np.where(y == d)[0]
+        counts[d] = idxs.size
+        means[d] = x[idxs].mean(axis=0)
+
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    np.save(out_path, means)
+    np.save(out_path.replace(".npy", "_counts.npy"), counts)
+    print("generated:", out_path)
+    print("generated:", out_path.replace(".npy", "_counts.npy"))
+
+
 def load_ideals(device):
     if not os.path.isfile(IDEAL_PATH):
-        raise FileNotFoundError(f"Missing: {IDEAL_PATH}")
+        compute_and_save_digit_means(MNIST_ROOT, IDEAL_PATH)
+
     means = np.load(IDEAL_PATH).astype(np.float32)  # (10,28,28)
     if means.shape != (10, 28, 28):
         raise ValueError(f"Expected (10,28,28), got {means.shape}")
@@ -88,13 +130,11 @@ class DenseConcatBlocks(nn.Module):
 
 
 def loss_terms(outs, tgt, target_blocks):
-    # mse over checkpoints
     mse = 0.0
     for b in target_blocks:
         mse = mse + F.mse_loss(outs[b - 1], tgt)
     mse = mse / float(len(target_blocks))
 
-    # smoothness: mean abs diff between consecutive outputs (encourage small changes)
     smooth = 0.0
     for i in range(len(outs) - 1):
         smooth = smooth + torch.mean(torch.abs(outs[i + 1] - outs[i]))
@@ -183,7 +223,6 @@ def main():
         te, te_mse, te_sm = eval_loss(model, test_loader, device, ideals, target_blocks)
         print(f"epoch {ep:03d} test_loss={te:.6f}  test_mse={te_mse:.6f}  test_smooth={te_sm:.6f}")
 
-        # save per-epoch
         ep_path = os.path.join(OUT_DIR, f"mnist_dense_concat50_targets_mse_e{ep:03d}.pt")
         torch.save(model.state_dict(), ep_path)
         print("saved:", ep_path)
