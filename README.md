@@ -59,3 +59,10 @@ A simple classifier then scores which digit it resembles (e.g., template similar
 - all 50 intermediate images
 - an animation through the 50-step evolution
 - the final predicted digit + confidence
+
+## To Train
+
+run `prepare_data.py` then `train_CA.py`. 
+to animate locally run `animate_CA.py`.
+To export model to onnx use `tools/export_onnx.py`.
+
