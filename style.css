@@ -36,8 +36,6 @@ canvas {
   display: block;
 }
 
-#draw { cursor: crosshair; }
-
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -96,6 +94,10 @@ canvas {
 
 .status { margin-top: 10px; opacity: 0.85; font-size: 12px; }
 
-#draw { touch-action: pan-x pan-y pinch-zoom; }
+#draw {
+  cursor: crosshair;
+  touch-action: pinch-zoom;   /* blocks 1-finger pan so drawing works; allows pinch */
+}
+
 
 #grid { width: 100%; height: auto; }
