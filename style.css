@@ -96,4 +96,6 @@ canvas {
 
 .status { margin-top: 10px; opacity: 0.85; font-size: 12px; }
 
+#draw { touch-action: pan-x pan-y pinch-zoom; }
+
 #grid { width: 100%; height: auto; }
